@@ -1,0 +1,31 @@
+---
+- name: Install Samba
+  apt:
+    name: samba
+    state: present
+  become: true
+
+- name: Ensure the system user exists on the system
+  user:
+    name: "{{ smb_user }}"
+    state: present
+    create_home: false
+  become: true
+
+- name: Set the Samba password for the user
+  command: smbpasswd -a "{{ smb_user }}"
+  become: true
+  when: ansible_user != smb_user
+
+- name: Configure Samba share in smb.conf
+  template:
+    src: smb.conf.j2
+    dest: "/etc/samba/smb.conf"
+  become: true
+
+- name: Restart the Samba service
+  service:
+    name: smbd
+    state: restarted
+  become: true
+

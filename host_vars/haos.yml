@@ -1,0 +1,31 @@
+image_url: "https://github.com/home-assistant/operating-system/releases/download/16.1/haos_ova-16.1.qcow2.xz"
+
+vm_name: "haos"
+os_variant: "generic"
+memory: 2048  # in MB
+vcpu: 2
+
+firmware: "efi"
+
+boot_devices:
+  - "cdrom"
+  - "hd"
+
+disks:
+  - type: "qcow2"
+    target: "sda"
+    bus: "scsi"
+
+networks:
+  - type: "bridge"
+    mac_address: "52:54:00:AB:AB:AB"
+    source: "br0"
+    source_attr: "bridge"
+    model: "virtio"
+
+enable_serial: true
+
+usb_devices:
+  - vendor: "0x2357"
+    product: "0x011e"
+

@@ -1,0 +1,5 @@
+---
+- name: Install NTP package on Ubuntu
+  ansible.builtin.apt:
+    name: ntp
+    state: present

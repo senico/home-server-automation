@@ -1,0 +1,26 @@
+image_url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+
+vm_name: "ubuntu"
+os_variant: "ubuntu-lts-latest"
+memory: 2048  # in MB
+vcpu: 2
+
+firmware: "efi"
+
+boot_devices:
+  - "cdrom"
+  - "hd"
+
+disks:
+  - type: "qcow2"
+    target: "sda"
+    bus: "scsi"
+
+networks:
+  - type: "bridge"
+    mac_address: "52:54:00:BA:BA:BA"
+    source: "br0"
+    source_attr: "bridge"
+    model: "virtio"
+
+enable_serial: true

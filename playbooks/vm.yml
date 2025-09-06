@@ -1,0 +1,9 @@
+---
+- name: Install any Linux OS as a KVM guest VM
+  hosts: host
+  become: yes
+  vars_files:
+    - "../host_vars/{{ vm }}.yml"  # Load host-specific settings
+
+  roles:
+    - vm

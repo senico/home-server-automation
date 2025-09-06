@@ -1,0 +1,26 @@
+---
+- name: Setup SMB and FTP shares
+  hosts: host
+  become: true
+
+  pre_tasks:
+    - name: Ensure the mount point directory exists
+      file:
+        path: "{{ mount_point }}"
+        state: directory
+
+    - name: Mount the disk
+      mount:
+        path: "{{ mount_point }}"
+        src: "{{ disk_identifier }}"
+        fstype: auto
+        state: mounted
+
+  roles:
+    - role: smb
+      vars:
+        smb_share_path: "{{ mount_point }}"
+
+    - role: ftp
+      vars:
+        ftp_share_path: "{{ mount_point }}"

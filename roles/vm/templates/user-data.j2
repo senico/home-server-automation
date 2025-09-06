@@ -1,0 +1,24 @@
+#cloud-config
+hostname: {{ instance_id }}
+users:
+  - name: {{ ansible_user }}
+    ssh-authorized-keys:
+      - "{{ ssh_public_key }}"
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+    lock_passwd: false
+
+# Timezone configuration
+timezone: "{{ timezone }}"
+
+# NTP configuration
+ntp:
+  enabled: true
+  servers:
+    - "{{ ntp_server }}"
+
+# Optional commands to run after first boot
+runcmd:
+  - timedatectl set-timezone "{{ timezone }}"
+  - systemctl restart sshd

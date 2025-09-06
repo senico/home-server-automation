@@ -1,0 +1,19 @@
+---
+- name: System base settings
+  hosts: systems
+  become: true
+  tasks:
+    - name: Configure network settings
+      import_role:
+        name: network
+
+    - name: Update DNS settings
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver {{ dns1 }}
+          nameserver {{ dns2 }}
+
+    - name: Make system settings
+      import_role:
+        name: system

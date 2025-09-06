@@ -1,0 +1,29 @@
+- name: Set up local development environment for Home Server
+  hosts: localhost
+  become: no
+  tasks:
+
+    - name: Ensure libvirt is installed (macOS)
+      ansible.builtin.command: "brew install libvirt"
+      when: ansible_facts['os_family'] == "Darwin"
+
+    - name: Ensure libvirt is installed (Linux)
+      ansible.builtin.apt:
+        name: libvirt-dev
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Create a Python virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv ~/homeserver/venv
+        creates: ~/homeserver/venv/bin/python3
+
+    - name: Install libvirt-python inside the virtual environment
+      ansible.builtin.pip:
+        name: libvirt-python
+        virtualenv: "~/homeserver/venv"
+
+    - name: Install community.libvirt collection
+      ansible.builtin.command:
+        cmd: "~/homeserver/venv/bin/ansible-galaxy collection install community.libvirt"
+        creates: "~/homeserver/.ansible/collections/ansible_collections/community/libvirt"

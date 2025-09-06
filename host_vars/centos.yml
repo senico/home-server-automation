@@ -1,0 +1,24 @@
+image_url: "https://cloud.centos.org/centos/8/x86_64/images/CentOS-8-GenericCloud-8.1.1911-20200113.3.x86_64.qcow2"
+
+vm_name: "centos"
+os_variant: "centos8"
+memory: 2048  # in MB
+vcpu: 2
+
+boot_devices:
+  - "cdrom"
+  - "hd"
+
+disks:
+  - type: "qcow2"
+    target: "sda"
+    bus: "scsi"
+
+networks:
+  - type: "bridge"
+    mac_address: "52:54:00:AC:AC:AC"
+    source: "br0"
+    source_attr: "bridge"
+    model: "virtio"
+
+enable_serial: true

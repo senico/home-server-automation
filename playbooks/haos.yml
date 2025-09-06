@@ -1,0 +1,32 @@
+---
+- name: Install any Linux OS as a KVM guest VM
+  hosts: host
+  become: yes
+  vars_files:
+    - "../host_vars/{{ vm }}.yml"  # Load host-specific settings
+
+  tasks:
+    - name: Create directory for VM
+      ansible.builtin.file:
+        path: "/var/lib/libvirt/images/{{ vm_name }}"
+        state: directory
+        mode: '0755'
+
+    - name: Download OS image
+      ansible.builtin.get_url:
+        url: "{{ image_url }}"
+        dest: "/var/lib/libvirt/images/{{ vm_name }}/{{ vm_name }}_image.xz"
+        mode: '0644'
+
+    - name: Extract the image
+      ansible.builtin.command:
+        cmd: xz -d "/var/lib/libvirt/images/{{ vm_name }}/{{ vm_name }}_image.xz"
+        creates: "/var/lib/libvirt/images/{{ vm_name }}/{{ vm_name }}_image"  # Only run if the image file doesn't exist
+        
+    - name: Define and start the VM
+      community.libvirt.virt:
+        name: "{{ vm_name }}"
+        state: running
+        xml: "{{ lookup('template', '../files/vm_config.xml.j2') }}"
+        autostart: true
+

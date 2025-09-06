@@ -1,0 +1,174 @@
+---
+- name: Generate Random Instance ID
+  set_fact:
+    instance_id: "{{ vm_name }}-{{ lookup('password', '/dev/null length=4 chars=ascii_letters') }}"
+
+- name: Create directory for VM
+  ansible.builtin.file:
+    path: "/var/lib/libvirt/images/{{ instance_id }}"
+    state: directory
+    mode: '0755'
+
+- name: Download OS image (non-compressed)
+  ansible.builtin.get_url:
+    url: "{{ image_url }}"
+    dest: "/var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2"
+    mode: '0644'
+  when: not image_url.endswith('.xz')
+
+- name: Download OS compressed image
+  ansible.builtin.get_url:
+    url: "{{ image_url }}"
+    dest: "/var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2.xz"
+    mode: '0644'
+  when: image_url.endswith('.xz')
+
+- name: Uncompress the image if it's compressed file
+  ansible.builtin.command:
+    cmd: "unxz -f /var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2.xz"
+  args:
+    removes: "/var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2.xz"
+  when: image_url.endswith('.xz') and not image_url.endswith('tar.xz')
+
+- name: Uncompress the image if it's a .tar.xz file
+  ansible.builtin.command:
+    cmd: "tar -xf /var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2.tar.gz -C /var/lib/libvirt/images/{{ instance_id }}/"
+  args:
+    removes: "/var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2.tar.gz"
+  when: image_url.endswith('tar.xz')
+
+- name: Create Cloud-Init user-data file
+  template:
+    src: user-data.j2
+    dest: "/var/lib/libvirt/images/{{ instance_id }}/user-data"
+
+- name: Create Cloud-Init meta-data file
+  template:
+    src: meta-data.j2
+    dest: "/var/lib/libvirt/images/{{ instance_id }}/meta-data"
+
+# Debug: Check if cloud-init files were created
+- name: Verify cloud-init files exist
+  stat:
+    path: "/var/lib/libvirt/images/{{ instance_id }}/{{ item }}"
+  loop:
+    - user-data
+    - meta-data
+  register: cloud_init_files
+
+- name: Debug cloud-init files existence
+  debug:
+    msg: "File {{ item.item }} exists: {{ item.stat.exists }}, size: {{ item.stat.size }} bytes"
+  loop: "{{ cloud_init_files.results }}"
+
+# Debug: Show content of cloud-init files
+- name: Display user-data content
+  command:
+    cmd: cat "/var/lib/libvirt/images/{{ instance_id }}/user-data"
+  register: user_data_content
+  ignore_errors: true
+
+- name: Debug user-data content
+  debug:
+    var: user_data_content.stdout
+
+- name: Display meta-data content
+  command:
+    cmd: cat "/var/lib/libvirt/images/{{ instance_id }}/meta-data"
+  register: meta_data_content
+  ignore_errors: true
+
+- name: Debug meta-data content
+  debug:
+    var: meta_data_content.stdout
+
+- name: Install genisoimage if needed
+  package:
+    name: genisoimage
+    state: present
+
+- name: Create Cloud-Init ISO using genisoimage
+  command:
+    cmd: >
+      genisoimage -output "/var/lib/libvirt/images/{{ instance_id }}/seed.iso"
+      -volid "cidata" -joliet -rock
+      "/var/lib/libvirt/images/{{ instance_id }}/user-data"
+      "/var/lib/libvirt/images/{{ instance_id }}/meta-data"
+    creates: "/var/lib/libvirt/images/{{ instance_id }}/seed.iso"
+
+- name: Verify ISO content
+  command:
+    cmd: isoinfo -i "/var/lib/libvirt/images/{{ instance_id }}/seed.iso" -l
+  register: iso_content
+  ignore_errors: true
+
+- name: Debug ISO content
+  debug:
+    var: iso_content.stdout
+
+- name: Define the VM from XML and set autostart
+  community.libvirt.virt:
+    command: define
+    xml: "{{ lookup('template', 'vm_config.xml.j2') }}"
+    autostart: true
+
+- name: Start the VM
+  community.libvirt.virt:
+    name: "{{ instance_id }}"
+    state: running
+  register: vm_status
+
+- name: Check VM status after startup
+  community.libvirt.virt:
+    name: "{{ instance_id }}"
+    command: status
+  register: vm_state
+
+- name: Debug VM state
+  debug:
+    var: vm_state
+
+- name: Wait a moment for VM to fully start
+  pause:
+    seconds: 10
+
+- name: Try to get console output from VM
+  community.libvirt.virt:
+    name: "{{ instance_id }}"
+    command: console
+  register: vm_console
+  async: 30
+  poll: 0
+  ignore_errors: true
+
+- name: Debug VM console output
+  debug:
+    var: vm_console
+
+- name: Status notification
+  debug:
+    msg: "VM {{ instance_id }} started successfully!"
+  when: vm_status is succeeded
+
+# Additional debug: Check if we can see cloud-init logs after some time
+- name: Wait a bit for cloud-init to run
+  pause:
+    seconds: 30
+
+- name: Try to check cloud-init status in VM
+  community.libvirt.virt:
+    name: "{{ instance_id }}"
+    command: command
+    args:
+      argv:
+        - sh
+        - -c
+        - "cloud-init status || echo 'cloud-init not available'"
+  register: cloud_init_status
+  async: 10
+  poll: 0
+  ignore_errors: true
+
+- name: Debug cloud-init status
+  debug:
+    var: cloud_init_status

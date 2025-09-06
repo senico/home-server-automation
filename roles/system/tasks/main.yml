@@ -1,0 +1,14 @@
+---
+- name: Set the system timezone
+  ansible.builtin.command:
+    cmd: timedatectl set-timezone "{{ timezone }}"
+  when: timezone is defined
+
+- name: Include common configuration for timezone and NTP
+  include_role:
+    name: system/common
+
+- name: Include OS-specific configuration
+  include_role:
+    name: "system/{{ ansible_facts['distribution'].lower() }}"
+  when: ansible_facts['distribution'] in ['Ubuntu', 'CentOS']

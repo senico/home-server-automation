@@ -1,0 +1,16 @@
+---
+- name: Install vsftpd
+  package:
+    name: vsftpd
+    state: present
+
+- name: Configure vsftpd
+  template:
+    src: vsftpd.conf.j2
+    dest: /etc/vsftpd.conf
+
+- name: Restart vsftpd service
+  service:
+    name: vsftpd
+    state: restarted
+    enabled: true

@@ -1,0 +1,7 @@
+---
+- name: Install and configure KVM on the host
+  hosts: host
+  become: true
+
+  roles:
+    - kvm

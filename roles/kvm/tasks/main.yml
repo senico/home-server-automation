@@ -1,0 +1,70 @@
+- name: Ensure KVM packages are installed on Ubuntu
+  ansible.builtin.apt:
+    name:
+      - qemu-kvm
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virt-manager
+      - python3-pycdlib
+      - python3-lxml
+      - guestfs-tools
+    state: present
+  when: ansible_facts['distribution'] == 'Ubuntu'
+
+- name: Ensure packages are installed on CentOS
+  ansible.builtin.yum:
+    name:
+      - qemu-kvm
+      - libvirt
+      - virt-manager
+      - bridge-utils
+      - python3-pycdlib
+      - python3-lxml
+      - guestfs-tools
+    state: present
+  when: ansible_facts['distribution'] == 'CentOS'
+
+- name: Ensure ansible packages are installed
+  ansible.builtin.package:
+    name: xz-utils
+    state: present
+
+- name: Start and enable libvirtd service
+  ansible.builtin.systemd:
+    name: libvirtd
+    state: started
+    enabled: true
+
+- name: Ensure virtualization is enabled (Check CPU)
+  ansible.builtin.command:
+    cmd: egrep -c '(vmx|svm)' /proc/cpuinfo
+  register: cpu_virtualization_check
+  changed_when: false
+
+- name: Fail if CPU does not support virtualization
+  ansible.builtin.fail:
+    msg: "The CPU does not support hardware virtualization."
+  when: cpu_virtualization_check.stdout == '0'
+
+- name: Ensure Netplan configuration file exists with correct settings
+  ansible.builtin.template:
+    src: templates/netplan.conf.j2
+    dest: /etc/netplan/01-netcfg.yaml
+    mode: '0644'
+
+- name: Apply the Netplan configuration
+  ansible.builtin.command:
+    cmd: netplan apply
+
+- name: Create br0 network definition
+  community.libvirt.virt_net:
+    name: br0-network
+    state: present
+    autostart: true
+    xml: |
+      <network>
+        <name>br0-network</name>
+        <bridge name="br0"/>
+        <forward mode="bridge"/>
+      </network>

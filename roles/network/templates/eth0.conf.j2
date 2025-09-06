@@ -1,0 +1,7 @@
+# Network configuration for interface eth0
+auto eth0
+iface eth0 inet static
+    address {{ ansible_host }}
+    netmask {{ netmask }}
+    gateway {{ gateway }}
+    dns-nameservers {{ dns1 }} {{ dns2 }}

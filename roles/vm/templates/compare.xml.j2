@@ -1,0 +1,48 @@
+<domain type='kvm'>
+  <name>{{ name }}</name>
+  <uuid>{{ uuid }}</uuid>
+  <description>{{ description }}</description>
+  <memory unit='KiB'>{{ memory }}</memory>
+  <vcpu placement='static'>{{ vcpu }}</vcpu>
+  <os firmware='efi'>
+    <type arch='x86_64' machine='pc-i440fx-noble'>hvm</type>
+    <firmware>
+      <feature enabled='no' name='enrolled-keys'/>
+      <feature enabled='no' name='secure-boot'/>
+    </firmware>
+    <loader readonly='yes' type='pflash'>{{ loader }}</loader>
+    <nvram template='{{ nvram_template }}'>{{ nvram }}</nvram>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+  <cpu mode='host-passthrough' check='none' migratable='on'/>
+  <devices>
+    <emulator>{{ emulator }}</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='{{ disk_path }}' index='1'/>
+      <target dev='sda' bus='scsi'/>
+    </disk>
+    <controller type='scsi' index='0' model='virtio-scsi'/>
+    <interface type='bridge'>
+      <mac address='{{ mac_address }}'/>
+      <source bridge='{{ bridge }}'/>
+      <model type='e1000'/>
+    </interface>
+    
+    <!-- Optional USB passthrough -->
+    {% if usb_devices is defined and usb_devices | length > 0 %}
+    {% for usb in usb_devices %}
+    <hostdev mode='subsystem' type='usb' managed='yes'>
+      <source>
+        <vendor id='{{ usb.vendor }}'/>
+        <product id='{{ usb.product }}'/>
+      </source>
+    </hostdev>
+    {% endfor %}
+    {% endif %}
+  </devices>
+</domain>

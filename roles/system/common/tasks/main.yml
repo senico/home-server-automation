@@ -1,0 +1,19 @@
+---
+- name: Set the system hostname
+  ansible.builtin.hostname:
+    name: "{{ ansible_hostname }}"
+
+- name: Enable and start systemd-timesyncd
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    state: started
+    enabled: true
+
+- name: Check time synchronization status
+  ansible.builtin.command: timedatectl
+  register: timedatectl_status
+  changed_when: false
+
+- name: Display time synchronization status
+  ansible.builtin.debug:
+    var: timedatectl_status.stdout

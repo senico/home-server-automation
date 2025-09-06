@@ -1,0 +1,9 @@
+disk_identifier: "UUID=6398-27AF"    # Universal identifier (UUID, LABEL, or /dev/sdX1)
+usb_dongle_vendor: "0x2357"          # First part of the usb Device ID
+usb_dongle_product: "0x011e"         # Second part of the usb Device ID
+mount_point: "/mnt/share"            # Mount point for the drive
+smb_share_name: "share"              # Name of the SMB share
+smb_user: "{{ ansible_user }}"       # Can be the same user as ansible_user or any other
+smb_password: "{{ lookup('env', 'SMB_PASSWORD') }}" # Use env variable to set the password
+arch: "x86_64"
+machine: "q35"

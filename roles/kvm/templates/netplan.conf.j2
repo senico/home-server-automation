@@ -1,0 +1,21 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eno1:
+      dhcp4: no  # Disable DHCP for the physical interface
+  bridges:
+    br0:
+      interfaces:
+        - eno1  # Wired interface, or wlan0 for wireless
+        - wlan0 # Add wlan0 to the bridge, if supported by your driver
+      dhcp4: no  # Enable DHCP for the bridge (or configure static IP if desired)
+      addresses:
+        - {{ ansible_host }}/{{ netmask | regex_replace('255.255.255.0', '24') | regex_replace('255.255.0.0', '16') | regex_replace('255.0.0.0', '8') }}
+      routes:
+        - to: default
+          via: {{ gateway }}  # Your gateway IP address
+      nameservers:
+        addresses:
+          - {{ dns1 }}
+          - {{ dns2 }}

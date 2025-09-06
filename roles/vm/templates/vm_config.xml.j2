@@ -1,0 +1,99 @@
+<domain type="kvm">
+  <name>{{ instance_id }}</name>
+  <memory unit="KiB">{{ memory * 1024 }}</memory>
+  <vcpu placement="static">{{ vcpu }}</vcpu>
+
+  <os {% if firmware is defined %} firmware="{{ firmware }}" {% endif %}>
+    <type arch="{{ arch | default('x86_64') }}" machine="{{ machine | default('pc-i440fx-noble') }}">hvm</type>
+    <os-variant>{{ os_variant }}</os-variant>
+
+    {% if firmware is defined and firmware == 'efi' %}
+    <firmware>
+      <feature enabled="no" name="enrolled-keys"/>
+      <feature enabled="no" name="secure-boot"/>
+    </firmware>
+    {% endif %}
+
+    {% for boot_dev in boot_devices %}
+    <boot dev="{{ boot_dev }}"/>
+    {% endfor %}
+  </os>
+
+  <features>
+    <acpi/>
+    <apic/>
+  </features>
+
+  <cpu mode="host-passthrough" check="none" migratable="on"/>
+
+  <devices>
+    <!-- Disk configuration -->
+    {% for disk in disks %}
+    <disk type="file" device="disk">
+      <driver name="qemu" type="{{ disk.type | default('qcow2') }}"/>
+      <source file="/var/lib/libvirt/images/{{ instance_id }}/{{ instance_id }}_image.qcow2"/>
+      <target dev="{{ disk.target }}" bus="{{ disk.bus | default('scsi') }}"/>
+      <address type="drive" controller="0" bus="0" target="0" unit="0"/>
+    </disk>
+    {% endfor %}
+
+    <!-- Cloud-Init Seed ISO -->
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <source file="/var/lib/libvirt/images/{{ instance_id }}/seed.iso"/>
+      <target dev="sdd" bus="scsi"/>
+      <readonly/>
+      <address type="drive" controller="0" bus="0" target="0" unit="1"/>
+    </disk>
+
+    <controller type="scsi" index="0" model="virtio-scsi">
+      <alias name="scsi0"/>
+      <address type="pci" domain="0x0000" bus="0x02" slot="0x00" function="0x0"/>
+    </controller>
+
+    <!-- Network interfaces -->
+    {% for net in networks %}
+    <interface type="{{ net.type | default('bridge') }}">
+      {% if net.mac_address %}
+      <mac address="{{ net.mac_address }}"/>
+      {% endif %}
+      <source {{ net.source_attr }}="{{ net.source }}"/>
+      <model type="{{ net.model | default('virtio') }}"/>
+    </interface>
+    {% endfor %}
+
+    <!-- USB controller -->
+    <controller type="usb" index="0" model="qemu-xhci" ports="15">
+      <alias name="usb"/>
+      <address type="pci" domain="0x0000" bus="0x03" slot="0x00" function="0x0"/>
+    </controller>
+
+    <!-- USB passthrough -->
+    {% if usb_devices is defined and usb_devices | length > 0 %}
+    {% for usb in usb_devices %}
+    <hostdev mode="subsystem" type="usb">
+      <source>
+        <vendor id="{{ usb.vendor }}"/>
+        <product id="{{ usb.product }}"/>
+      </source>
+    </hostdev>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Serial and Console configuration -->
+    {% if enable_serial %}
+    <serial type="pty">
+      <source path="/dev/pts/0"/>
+      <target type="isa-serial" port="0">
+        <model name="isa-serial"/>
+      </target>
+      <alias name="serial0"/>
+    </serial>
+    <console type="pty" tty="/dev/pts/0">
+      <source path="/dev/pts/0"/>
+      <target type="serial" port="0"/>
+      <alias name="serial0"/>
+    </console>
+    {% endif %}
+  </devices>
+</domain>
